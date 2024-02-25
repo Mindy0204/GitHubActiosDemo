@@ -1,0 +1,88 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+env:
+  app_name: githubactionsdemo
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events
+  push:
+    branches: 
+      - main
+      - feature/*
+    tags:
+      - release/v*
+      - alpha/v*
+  pull_request:
+    branches: 
+      - main
+  # Triggers the workflow on every Monday at 8:00 (Taiwan, UTC+8)
+  schedule:
+    - cron: '0 0 * * 1'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a job called "build_upload"
+  build_upload:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+
+      # Set current date as env variable
+      - name: Set current date as env variable
+        run: echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # Generate debug and release APK
+      - name: Generate APK
+        run: |
+          ./gradlew assembleDebug
+          ./gradlew assembleRelease
+
+      # Generate debug and release AAB
+      - name: Generate AAB
+        run: |
+          ./gradlew bundleDebug
+          ./gradlew bundleRelease
+
+      # Upload Artifact
+      - name: Upload APK debug
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.date_today }} - ${{ env.app_name }} - debug
+          path: app/build/outputs/apk/debug/
+
+      - name: Upload APK release
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.date_today }} - ${{ env.app_name }} - release
+          path: app/build/outputs/apk/release/
+
+      - name: Upload AAB debug
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.date_today }} - ${{ env.app_name }} - debug
+          path: app/build/outputs/bundle/debug/
+
+      - name: Upload AAB release
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.date_today }} - ${{ env.app_name }} - release
+          path: app/build/outputs/bundle/release/
