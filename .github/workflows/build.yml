@@ -13,8 +13,7 @@ on:
       - main
       - feature/*
     tags:
-      - release/v*
-      - alpha/v*
+      - v*
   pull_request:
     branches: 
       - main
@@ -62,6 +61,18 @@ jobs:
           ./gradlew bundleDebug
           ./gradlew bundleRelease
 
+      # Sign release APK
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+        # ID used to access action output
+        id: sign_app
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+
       # Upload Artifact
       - name: Upload APK debug
         uses: actions/upload-artifact@v4
@@ -86,3 +97,41 @@ jobs:
         with:
           name: ${{ env.date_today }}-${{ env.app_name }}-aabRelease
           path: app/build/outputs/bundle/release/
+
+  # This workflow contains a job called "release"
+  release:
+    runs-on: ubuntu-latest
+    # Execute after build_upload finished
+    needs: build_upload
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ github.workspace }}
+          # Put multiple files into the same directory
+          merge-multiple: true
+
+      # Filter files to include only those containing 'aabRelease' or 'apkRelease' in their names
+      - name: Filter files
+        run: |
+          mkdir -p filtered_files
+          find . -type f \( -name "*aabRelease*" -o -name "*apkRelease*" \) -exec cp {} filtered_files \;
+
+      - name: Publish release
+        # Execute this action if pushed tag starts with 'refs/tags/v'
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: ncipollo/release-action@v1
+        with:
+          # Allow the same tagged file updated
+          allowUpdates: true
+          artifacts: |
+            filtered_files/*.apk
+            filtered_files/*.aab
+          token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: false
+          draft: false
+          name: ${{ github.ref_name }}
+          body: |
+            Release ${{ github.ref_name }} AAB and APK
+          tag: ${{ github.ref_name }}
