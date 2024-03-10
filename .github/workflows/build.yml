@@ -49,56 +49,75 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      # Generate debug and release APK
-      - name: Generate APK
+      # Generate both debug and release version
+      - name: Generate APK and AAB
         run: |
           ./gradlew assembleDebug
+          DEBUG_APK_FILE=$(find 'app/build/outputs/apk/debug/' -name '*.apk' | head -n 1)
+          cp $DEBUG_APK_FILE app-debug-unsigned.apk # Rename debug APK file and duplicate to root
+          
           ./gradlew assembleRelease
-
-      # Generate debug and release AAB
-      - name: Generate AAB
-        run: |
+          RELEASE_APK_FILE=$(find 'app/build/outputs/apk/release/' -name '*.apk' | head -n 1)
+          cp $RELEASE_APK_FILE app-release-unsigned.apk # Rename release APK file and duplicate to root
+          
           ./gradlew bundleDebug
+          DEBUG_AAB_FILE=$(find 'app/build/outputs/bundle/debug/' -name '*.aab' | head -n 1)
+          cp $DEBUG_AAB_FILE app-debug-unsigned.aab # Rename debug AAB file and duplicate to root
+          
           ./gradlew bundleRelease
+          RELEASE_AAB_FILE=$(find 'app/build/outputs/bundle/release/' -name '*.aab' | head -n 1)
+          cp $RELEASE_AAB_FILE app-release-unsigned.apk # Rename release AAB file and duplicate to root
+          
+      - name: Sign APK and AAB
+        run: |
+          echo "${{ secrets.SIGNING_KEY }}" | base64 --decode > sign-key.keystore
 
-      # Sign release APK
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
-        # ID used to access action output
-        id: sign_app
-        with:
-          releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: "34.0.0"
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore sign-key.keystore -storepass ${{ secrets.KEY_STORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} app-debug-unsigned.apk ${{ secrets.ALIAS }} # Sign debug APK
+          cp app-debug-unsigned.apk app-debug-signed.apk # Duplicate and rename debug APK file
+
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore sign-key.keystore -storepass ${{ secrets.KEY_STORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} app-release-unsigned.apk ${{ secrets.ALIAS }} # Sign release APK
+          cp app-release-unsigned.apk app-release-signed.apk # Duplicate and rename release APK file
+
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore sign-key.keystore -storepass ${{ secrets.KEY_STORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} app-debug-unsigned.aab ${{ secrets.ALIAS }} # Sign debug AAB
+          cp app-debug-unsigned.aab app-debug-signed.aab # Duplicate and rename debug AAB file
+
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore sign-key.keystore -storepass ${{ secrets.KEY_STORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} app-release-unsigned.aab ${{ secrets.ALIAS }} # Sign release AAB
+          cp app-release-unsigned.aab app-release-signed.aab # Duplicate and rename release AAB file
+    
+      - name: Verify APK and AAB
+        run: |
+          jarsigner -verify -verbose -certs app-debug-signed.apk
+          jarsigner -verify -verbose -certs app-release-signed.apk
+          jarsigner -verify -verbose -certs app-debug-signed.aab
+          jarsigner -verify -verbose -certs app-release-signed.aab
+      
+      - name: Display structure of files
+        run: ls -l
 
       # Upload Artifact
       - name: Upload APK debug
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.date_today }}-${{ env.app_name }}-apkDebug
-          path: app/build/outputs/apk/debug/
+          path: app-debug-signed.apk
 
       - name: Upload APK release
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.date_today }}-${{ env.app_name }}-apkRelease
-          path: app/build/outputs/apk/release/
+          path: app-release-signed.apk
 
       - name: Upload AAB debug
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.date_today }}-${{ env.app_name }}-aabDebug
-          path: app/build/outputs/bundle/debug/
+          path: app-debug-signed.aab
 
       - name: Upload AAB release
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.date_today }}-${{ env.app_name }}-aabRelease
-          path: app/build/outputs/bundle/release/
+          path: app-release-signed.aab
 
   # This workflow contains a job called "release"
   release:
