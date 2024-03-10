@@ -66,7 +66,7 @@ jobs:
           
           ./gradlew bundleRelease
           RELEASE_AAB_FILE=$(find 'app/build/outputs/bundle/release/' -name '*.aab' | head -n 1)
-          cp $RELEASE_AAB_FILE app-release-unsigned.apk # Rename release AAB file and duplicate to root
+          cp $RELEASE_AAB_FILE app-release-unsigned.aab # Rename release AAB file and duplicate to root
           
       - name: Sign APK and AAB
         run: |
