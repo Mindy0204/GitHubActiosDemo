@@ -98,25 +98,25 @@ jobs:
       - name: Upload APK debug
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.date_today }}-${{ env.app_name }}-apkDebug
+          name: ${{ env.date_today }}-${{ env.app_name }}-apkDebug.apk
           path: app-debug-signed.apk
 
       - name: Upload APK release
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.date_today }}-${{ env.app_name }}-apkRelease
+          name: ${{ env.date_today }}-${{ env.app_name }}-apkRelease.apk
           path: app-release-signed.apk
 
       - name: Upload AAB debug
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.date_today }}-${{ env.app_name }}-aabDebug
+          name: ${{ env.date_today }}-${{ env.app_name }}-aabDebug.aab
           path: app-debug-signed.aab
 
       - name: Upload AAB release
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.date_today }}-${{ env.app_name }}-aabRelease
+          name: ${{ env.date_today }}-${{ env.app_name }}-aabRelease.aab
           path: app-release-signed.aab
 
   # This workflow contains a job called "release"
@@ -146,9 +146,7 @@ jobs:
         with:
           # Allow the same tagged file updated
           allowUpdates: true
-          artifacts: |
-            filtered_files/*.apk
-            filtered_files/*.aab
+          artifacts: "filtered_files/*.apk,filtered_files/*.aab"
           token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: false
           draft: false
