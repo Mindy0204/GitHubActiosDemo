@@ -137,7 +137,8 @@ jobs:
       - name: Filter files
         run: |
           mkdir -p filtered_files
-          find . -type f \( -name "*aabRelease*" -o -name "*apkRelease*" \) -exec cp {} filtered_files \;
+          find . -type f \( -name "*release*" \) -exec cp {} filtered_files \;
+          ls -R
 
       - name: Publish release
         # Execute this action if pushed tag starts with 'refs/tags/v'
