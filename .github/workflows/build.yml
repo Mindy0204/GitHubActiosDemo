@@ -122,6 +122,8 @@ jobs:
   # This workflow contains a job called "release"
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     # Execute after build_upload finished
     needs: build_upload
 
